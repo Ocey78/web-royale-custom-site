@@ -1,6 +1,12 @@
-name: Publish compiled Web Royale Custom
+name: Publish prebuilt Web Royale site
+# Manual only: committing this private project does not publish its artwork.
 on:
   workflow_dispatch:
+    inputs:
+      release_sha:
+        description: Verified immutable release commit
+        required: true
+        type: string
 permissions:
   contents: read
   pages: write
@@ -16,9 +22,19 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.release_sha }}
+      - name: Verify the requested release commit
+        env:
+          RELEASE_SHA: ${{ inputs.release_sha }}
+        run: |
+          [[ "$RELEASE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
+      - name: Upload the prebuilt website only
+        uses: actions/upload-pages-artifact@v4
         with:
           path: dist
-      - id: deployment
+      - name: Publish
+        id: deployment
         uses: actions/deploy-pages@v4
